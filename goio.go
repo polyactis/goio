@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -48,4 +49,31 @@ func Writer(f *os.File) (io.Writer, error) {
 	default:
 		return f, nil
 	}
+}
+
+func OpenReader(inputFname string) *io.Reader {
+
+	fmt.Println("suffix:", filepath.Ext(inputFname))
+
+	inFile, err := os.Open(inputFname)
+	if err != nil {
+		log.Fatalln("can't open input file", inputFname)
+	}
+	//defer inFile.Close()
+
+	reader, err := Reader(inFile)
+	if err != nil {
+		log.Fatalln("can't open input reader", inputFname)
+	}
+	return &reader
+}
+
+func OpenGzipWriter(outputFname string) *gzip.Writer {
+	outputFile, outErr := os.Create(outputFname)
+	if outErr != nil {
+		log.Fatalln("can't open output file", outputFname)
+	}
+	//defer outputFile.Close()
+	outputWriter := gzip.NewWriter(outputFile)
+	return outputWriter
 }
