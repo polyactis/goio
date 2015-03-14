@@ -52,26 +52,28 @@ func Writer(f *os.File) (io.Writer, error) {
 }
 
 func OpenReader(inputFname string) *io.Reader {
+	fmt.Println("Opening input file", inputFname, "...")
 
 	fmt.Println("suffix:", filepath.Ext(inputFname))
 
 	inFile, err := os.Open(inputFname)
 	if err != nil {
-		log.Fatalln("can't open input file", inputFname)
+		log.Fatalln("ERROR: can't open input file", inputFname)
 	}
 	//defer inFile.Close()
 
 	reader, err := Reader(inFile)
 	if err != nil {
-		log.Fatalln("can't open input reader", inputFname)
+		log.Fatalln("ERROR: can't open input reader", inputFname)
 	}
 	return &reader
 }
 
 func OpenGzipWriter(outputFname string) *gzip.Writer {
+	fmt.Println("Opening output file", outputFname, "...")
 	outputFile, outErr := os.Create(outputFname)
 	if outErr != nil {
-		log.Fatalln("can't open output file", outputFname)
+		log.Fatalln("ERROR: can't open output file", outputFname)
 	}
 	//defer outputFile.Close()
 	outputWriter := gzip.NewWriter(outputFile)
