@@ -67,9 +67,9 @@ func (m *CalulateCytoMethylationPerc) handleDataRow(dataRow *[]string) int {
 func (m *CalulateCytoMethylationPerc) handleHeader(header *[]string) int {
 	fmt.Println("Handling header ...")
 	//fmt.Fprintln(m.gzipWriter, strings.Join(*header, "\t"))
-	newHeader := []string{"#Chromosome", "0BasedStart", "Stop",
-		"Strand", "MethylCount", "TotalCount", "MethylFraction",
-		"CytoContext", "CytoTriNucleotide"}
+	newHeader := []string{"#Chromosome|str", "0BasedStart|int", "Stop|int",
+		"Strand|str", "MethylCount|int", "TotalCount|int", "MethylFraction|float",
+		"CytoContext|str", "CytoTriNucleotide|str"}
 	m.outputRowChannel <- newHeader
 	//fmt.Fprintln(m.gzipWriter, strings.Join(newHeader, "\t"))
 	return 1

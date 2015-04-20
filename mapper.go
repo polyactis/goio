@@ -16,6 +16,7 @@ type MapperInterface interface {
 	Traverse()
 	handleHeader(header *[]string) int
 	handleDataRow(dataRow *[]string) int
+	reduce() int
 }
 
 type Mapper struct {
@@ -77,6 +78,9 @@ func (m *Mapper) PreProcess() {
 			}
 			if m.IsHeaderPresent {
 				m.header = &fields
+			}
+			if m.noOfLines == 0 && m.IsHeaderPresent {
+
 			} else {
 				m.inputRowChannel <- fields
 			}
@@ -106,22 +110,12 @@ func (m *Mapper) PreProcess() {
 }
 
 func (m *Mapper) PostProcess() {
+	close(m.outputRowChannel) //time to close the output channel
+
 	fmt.Print("Waiting for threads to finish ... ")
 	m.wg.Wait()
 	fmt.Println("Done.")
 
-}
-
-func (m *Mapper) Traverse() {
-	fmt.Println("Start processing input data  ...")
-	for dataRow := range m.inputRowChannel {
-		m.noOfLinesProcessed++
-		//fmt.Println(strings.Join(dataRow, "\t"))
-		m.sumOfHandleDataRowReturnValue = m.sumOfHandleDataRowReturnValue + int64(m.MInterface.handleDataRow(&dataRow))
-	}
-
-	close(m.outputRowChannel) //time to close the other channel
-	fmt.Println("Processed", m.noOfLinesProcessed, "lines. sumOfHandleDataRowReturnValue:", m.sumOfHandleDataRowReturnValue, ".")
 }
 
 // default is to copy the input header if it's present
@@ -147,4 +141,20 @@ func (m *Mapper) handleDataRow(dataRow *[]string) int {
 		return 0
 	}
 
+}
+func (m *Mapper) reduce() int {
+	return 0
+
+}
+
+func (m *Mapper) Traverse() {
+	fmt.Println("Start processing input data  ...")
+	for dataRow := range m.inputRowChannel {
+		m.noOfLinesProcessed++
+		//fmt.Println(strings.Join(dataRow, "\t"))
+		m.sumOfHandleDataRowReturnValue = m.sumOfHandleDataRowReturnValue + int64(m.MInterface.handleDataRow(&dataRow))
+	}
+	m.MInterface.reduce()
+
+	fmt.Println("Processed", m.noOfLinesProcessed, "lines. sumOfHandleDataRowReturnValue:", m.sumOfHandleDataRowReturnValue, ".")
 }
