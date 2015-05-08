@@ -26,8 +26,8 @@ func (m *CalculateTwoColumnCorrelation) handleHeader(header *[]string) int {
 	fmt.Println("YColIndex:", m.YColIndex)
 	fmt.Println("Handling header ...")
 	newHeader := []string{"#numberOfData|int", "correlationR2|float",
-		"meanCol_" + strconv.FormatInt(int64(m.XColIndex), 10) + "_" + (*header)[m.XColIndex],
-		"meanCol_" + strconv.FormatInt(int64(m.YColIndex), 10) + "_" + (*header)[m.YColIndex],
+		"meanCol_" + strconv.FormatInt(int64(m.XColIndex), 10) + "_" + (*header)[m.XColIndex] + "|float",
+		"meanCol_" + strconv.FormatInt(int64(m.YColIndex), 10) + "_" + (*header)[m.YColIndex] + "|float",
 		"filename|str"}
 	m.outputRowChannel <- newHeader
 	return 1
