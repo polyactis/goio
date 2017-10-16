@@ -7,12 +7,12 @@ import (
 )
 
 type CalulateCytoMethylationPerc struct {
-	Mapper
+	*Mapper
 	MinCov      int
 	CytoContext string
 }
 
-func (m *CalulateCytoMethylationPerc) handleDataRow(dataRow *[]string) int {
+func (m *CalulateCytoMethylationPerc) HandleDataRow(dataRow *[]string) int {
 	if dataRow != nil {
 		locusCytoContext := (*dataRow)[5]
 		if m.CytoContext != "" && m.CytoContext != locusCytoContext {
@@ -55,7 +55,7 @@ func (m *CalulateCytoMethylationPerc) handleDataRow(dataRow *[]string) int {
 			locusCytoContext,
 			(*dataRow)[6]}
 		//*dataRow = append(*dataRow, strconv.FormatInt(coverage, 10), strconv.FormatFloat(methylFraction, 'f', 5, 64))
-		m.outputRowChannel <- newDataRow
+		m.OutputRowChannel <- newDataRow
 		//fmt.Fprintln(m.gzipWriter, strings.Join(newDataRow, "\t"))
 		return 1
 	} else {
@@ -64,13 +64,13 @@ func (m *CalulateCytoMethylationPerc) handleDataRow(dataRow *[]string) int {
 
 }
 
-func (m *CalulateCytoMethylationPerc) handleHeader(header *[]string) int {
+func (m *CalulateCytoMethylationPerc) HandleHeader(header *[]string) int {
 	fmt.Println("Handling header ...")
 	//fmt.Fprintln(m.gzipWriter, strings.Join(*header, "\t"))
 	newHeader := []string{"#Chromosome|str", "0BasedStart|int", "Stop|int",
 		"Strand|str", "MethylCount|int", "TotalCount|int", "MethylFraction|float",
 		"CytoContext|str", "CytoTriNucleotide|str"}
-	m.outputRowChannel <- newHeader
+	m.OutputRowChannel <- newHeader
 	//fmt.Fprintln(m.gzipWriter, strings.Join(newHeader, "\t"))
 	return 1
 

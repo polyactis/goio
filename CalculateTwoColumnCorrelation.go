@@ -8,7 +8,7 @@ import (
 )
 
 type CalculateTwoColumnCorrelation struct {
-	Mapper
+	*Mapper
 	XColIndex int
 	YColIndex int
 
@@ -21,7 +21,7 @@ type CalculateTwoColumnCorrelation struct {
 	MeanX, MeanY, Cor float64
 }
 
-func (m *CalculateTwoColumnCorrelation) handleHeader(header *[]string) int {
+func (m *CalculateTwoColumnCorrelation) HandleHeader(header *[]string) int {
 	fmt.Println("XColIndex:", m.XColIndex)
 	fmt.Println("YColIndex:", m.YColIndex)
 	fmt.Println("Handling header ...")
@@ -29,12 +29,12 @@ func (m *CalculateTwoColumnCorrelation) handleHeader(header *[]string) int {
 		"meanCol_" + strconv.FormatInt(int64(m.XColIndex), 10) + "_" + (*header)[m.XColIndex] + "|float",
 		"meanCol_" + strconv.FormatInt(int64(m.YColIndex), 10) + "_" + (*header)[m.YColIndex] + "|float",
 		"filename|str"}
-	m.outputRowChannel <- newHeader
+	m.OutputRowChannel <- newHeader
 	return 1
 
 }
 
-func (m *CalculateTwoColumnCorrelation) handleDataRow(dataRow *[]string) int {
+func (m *CalculateTwoColumnCorrelation) HandleDataRow(dataRow *[]string) int {
 	if dataRow != nil {
 		m.NumOfData = m.NumOfData + 1
 
@@ -60,7 +60,7 @@ func (m *CalculateTwoColumnCorrelation) handleDataRow(dataRow *[]string) int {
 
 }
 
-func (m *CalculateTwoColumnCorrelation) reduce() int {
+func (m *CalculateTwoColumnCorrelation) Reduce() int {
 	if m.NumOfData > 0 {
 		numOfDataInFloat := float64(m.NumOfData)
 		m.MeanX = m.sum_x / numOfDataInFloat
@@ -80,6 +80,6 @@ func (m *CalculateTwoColumnCorrelation) reduce() int {
 		strconv.FormatFloat(m.MeanX, 'f', 5, 64),
 		strconv.FormatFloat(m.MeanY, 'f', 5, 64),
 		m.InputFname}
-	m.outputRowChannel <- newDataRow
+	m.OutputRowChannel <- newDataRow
 	return 1
 }
