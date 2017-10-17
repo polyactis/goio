@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 )
+
+const bufferSize = 32 * 1024 * 1024
 
 type handleHeaderFuncType func(*[]string) int
 type handleDataFuncType func(*[]string) int
@@ -30,6 +33,7 @@ type Mapper struct {
 	OutputFname     string
 	IsHeaderPresent bool
 	RowChannelSize  int
+	Delimiter       string
 
 	InputRowChannel               chan []string
 	OutputRowChannel              chan []string
@@ -40,7 +44,9 @@ type Mapper struct {
 	noOfLinesProcessed            int64
 	noOfLinesOutputted            int64
 	sumOfHandleDataRowReturnValue int64
-	waitGroup                     sync.WaitGroup //wait for all threads to finish before exiting
+
+	WaitComputing    sync.WaitGroup //wait for all threads to finish before exiting
+	WaitOutputThread sync.WaitGroup
 }
 
 func NewMapper(InputFname string, OutputFname string, IsHeaderPresent bool, RowChannelSize int) *Mapper {
@@ -50,6 +56,7 @@ func NewMapper(InputFname string, OutputFname string, IsHeaderPresent bool, RowC
 	m.OutputFname = OutputFname
 	m.IsHeaderPresent = IsHeaderPresent
 	m.RowChannelSize = RowChannelSize
+	m.Delimiter = "\t"
 
 	m.MInterface = m //to reach overridden methods
 	return m
@@ -62,22 +69,28 @@ func (m *Mapper) PreProcess(handleHeaderFn handleHeaderFuncType) {
 	if m.RowChannelSize == 0 {
 		m.RowChannelSize = 10000
 	}
-	fmt.Println("IsHeaderPresent:", m.IsHeaderPresent)
-	fmt.Println("RowChannelSize:", m.RowChannelSize)
+	if m.Delimiter == "" {
+		m.Delimiter = "\t"
+	}
+	fmt.Println("IsHeaderPresent:", m.IsHeaderPresent, ".")
+	fmt.Println("RowChannelSize:", m.RowChannelSize, ".")
+	fmt.Println("Delimiter:", m.Delimiter, ".")
 	m.InputRowChannel = make(chan []string, m.RowChannelSize)
 	m.OutputRowChannel = make(chan []string, 100)
 
-	m.waitGroup.Add(2)
+	m.WaitComputing.Add(1)
 	go func() {
-		defer m.waitGroup.Done()
+		defer m.WaitComputing.Done()
 		fmt.Println("Started input-reading thread", m.InputFname, "...")
 		m.inputReader = OpenReader(m.InputFname)
-		scanner := bufio.NewScanner(m.inputReader)
-		for scanner.Scan() {
-			line := scanner.Text()
-			fields := strings.Split(line, "\t")
+		r := bufio.NewReaderSize(m.inputReader, bufferSize)
+		byteLine, isPrefix, err := r.ReadLine()
+		for err == nil && !isPrefix {
+			line := string(byteLine)
+			//fmt.Println(line)
+			fields := strings.Split(line, m.Delimiter)
 			if m.noOfLines == 0 {
-				//m.MInterface.HandleHeader(&fields)	 //reach overridden methods
+				//m.MInterface.HandleHeader(&fields) //to reach overridden methods
 				handleHeaderFn(&fields)
 			}
 			if m.IsHeaderPresent {
@@ -88,18 +101,48 @@ func (m *Mapper) PreProcess(handleHeaderFn handleHeaderFuncType) {
 			} else {
 				m.InputRowChannel <- fields
 			}
-			//InputRowChannel <- fields
+			//inputRowChannel <- fields
 			m.noOfLines++
+			byteLine, isPrefix, err = r.ReadLine()
 		}
-		if err := scanner.Err(); err != nil {
+		if isPrefix {
+			fmt.Println("Error: buffer size", bufferSize, "is too small for this input file.")
+			os.Exit(2)
+		}
+		if err != io.EOF {
 			log.Fatal(err)
 		}
+		/*
+			//not good when one line is too long, buffer size for scanner is limited.
+				scanner := bufio.NewScanner(m.inputReader)
+				for scanner.Scan() {
+					line := scanner.Text()
+					fields := strings.Split(line, m.Delimiter)
+					if m.noOfLines == 0 {
+						m.MInterface.handleHeader(&fields) //to reach overridden methods
+					}
+					if m.IsHeaderPresent {
+						m.header = &fields
+					}
+					if m.noOfLines == 0 && m.IsHeaderPresent {
+
+					} else {
+						m.inputRowChannel <- fields
+					}
+					//inputRowChannel <- fields
+					m.noOfLines++
+				}
+				if err := scanner.Err(); err != nil {
+					log.Fatal(err)
+				}
+		*/
 		close(m.InputRowChannel)
 		fmt.Println("Input file", m.InputFname, "contains ", m.noOfLines, "lines.")
 	}()
 
+	m.WaitOutputThread.Add(1)
 	go func() {
-		defer m.waitGroup.Done()
+		defer m.WaitOutputThread.Done()
 		fmt.Println("Started output thread", m.OutputFname, "...")
 		m.gzipWriter = OpenGzipWriter(m.OutputFname)
 		for dataRow := range m.OutputRowChannel {
@@ -114,10 +157,14 @@ func (m *Mapper) PreProcess(handleHeaderFn handleHeaderFuncType) {
 }
 
 func (m *Mapper) PostProcess() {
-	close(m.OutputRowChannel) //time to close the output channel
+	fmt.Print("Waiting for all computing threads to finish ... ")
+	m.WaitComputing.Wait()
+	fmt.Println("Done.")
 
-	fmt.Print("Waiting for threads to finish ... ")
-	m.waitGroup.Wait()
+	// all computing is over. time to close the output channel.
+	close(m.OutputRowChannel)
+	fmt.Print("Waiting for the output thread to finish ... ")
+	m.WaitOutputThread.Wait()
 	fmt.Println("Done.")
 
 }
