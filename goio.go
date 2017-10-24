@@ -14,7 +14,7 @@ import (
 func Reader(f *os.File) (io.Reader, error) {
 	switch filepath.Ext(f.Name()) {
 	case ".gz":
-		fmt.Println("Use gzip NewReader")
+		//fmt.Println("Use gzip NewReader")
 		return gzip.NewReader(f)
 	case ".bz2":
 		return bzip2.NewReader(f), nil
@@ -52,9 +52,8 @@ func Writer(f *os.File) (io.Writer, error) {
 }
 
 func OpenReader(inputFname string) io.Reader {
-	fmt.Println("Opening input file", inputFname, "...")
-
-	fmt.Println("suffix:", filepath.Ext(inputFname))
+	//fmt.Println("Opening input file", inputFname, "...")
+	//fmt.Println("suffix:", filepath.Ext(inputFname))
 
 	inFile, err := os.Open(inputFname)
 	if err != nil {
